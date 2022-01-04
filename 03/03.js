@@ -95,10 +95,10 @@ function draw() {
 
 function* run() {
   console.group('Painting base layer...');
-  resetPaint(64);
+  resetPaint(-64);
   paintBaseFill(100);
-  paintNebula(40, 40, 192);
-  paintNebula(20, 20, 64);
+  paintNebula(40, 40, 128);
+  paintNebula(20, 20, 255);
   simulate();
   applyPaint();
   console.groupEnd();
@@ -106,22 +106,22 @@ function* run() {
   yield;
 
   console.group('Painting gradient...');
-  resetPaint(16);
-  paintNebula(6, 12, 48, 240, 256);
+  resetPaint(8);
+  paintNebula(6, 9, 128, 240, 256);
   simulate();
   applyPaint();
 
   yield;
 
-  resetPaint(16);
-  paintNebula(6, 12, 48, 160, 240); 
+  resetPaint(8);
+  paintNebula(6, 9, 128, 160, 240); 
   simulate();
   applyPaint();
 
   yield;
 
-  resetPaint(16);
-  paintNebula(6, 12, 48, 0, 160);
+  resetPaint(8);
+  paintNebula(6, 9, 128, 0, 160);
   simulate();
   applyPaint();
   console.groupEnd();
@@ -186,7 +186,7 @@ function paintBaseFill(baseFillRadius) {
       x,
       y,
       baseFillRadius,
-      color(...colorSchemeFunc(0.5).rgb(), 240),
+      color(...colorSchemeFunc(0.5).rgb(), 192),
       64
     );
   }
