@@ -91,7 +91,7 @@ function setup() {
         points.push({
           thickness: constrain(
             (thickness * 0.5 - r) * random(),
-            minThickness,
+            minThickness * 0.6,
             minThickness + 1 + brushiness * thickness * 0.1
           ),
           x: sin(a) * r,
