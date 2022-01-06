@@ -22,6 +22,7 @@ let stitchGraphics;
 const flowers = [];
 const rawStitches = [];
 
+let eraseThickness;
 let branchThickness;
 let branchWideness;
 let branchLengthFactorMin;
@@ -69,6 +70,8 @@ function setup() {
     pistilColor.hex(),
   ];
 
+  eraseThickness = round(max(randomGaussian(0, 1), 0));
+  if (eraseThickness > 0) eraseThickness += 0.5;
   branchThickness = max(randomGaussian(1.5, 0.5), 1.5);
   branchWideness = constrain(
     randomGaussian(0.35 + branchThickness * 0.1, 0.1),
@@ -247,19 +250,19 @@ function drawLeaf(target, x, y, angle, size) {
   const controlLeftX = x + sin(leftAngle) * sideSize;
   const controlLeftY = y - cos(leftAngle) * sideSize;
 
-  // target.stroke(255);
-  // target.strokeWeight(4.5);
-  // target.fill(255);
+  target.stroke(255);
+  target.strokeWeight(2 + eraseThickness);
+  target.fill(255);
 
-  // target.erase();
+  target.erase();
 
-  // antiAntiAlias(() => {
-  //   target.beginShape();
-  //   target.vertex(x, y);
-  //   target.quadraticVertex(controlLeftX, controlLeftY, tipX, tipY);
-  //   target.quadraticVertex(controlRightX, controlRightY, x, y);
-  //   target.endShape(CLOSE);
-  // });
+  antiAntiAlias(() => {
+    target.beginShape();
+    target.vertex(x, y);
+    target.quadraticVertex(controlLeftX, controlLeftY, tipX, tipY);
+    target.quadraticVertex(controlRightX, controlRightY, x, y);
+    target.endShape(CLOSE);
+  });
 
   deleteRawStitches(
     lerp(x, tipX, 0.5) * cellSize,
@@ -307,10 +310,9 @@ function drawFlower(target, x, y, radius) {
   for (let e = 0; e < 2; e++) {
     const isErasing = e === 0;
     if (isErasing) {
-      continue;
       target.erase();
       target.stroke(255);
-      target.strokeWeight(2);
+      target.strokeWeight(1 + eraseThickness);
     } else {
       target.noErase();
       target.stroke(palette[PALETTE_PETAL]);
@@ -594,7 +596,7 @@ function drawStitch(target, x0, y0, x1, y1, colour) {
   const raiseFactor = randomGaussian(4, 4);
   const spreadFactor = randomGaussian(6, 1);
 
-  const lightColor = chroma(colour).brighten(2);
+  const lightColor = chroma(colour).brighten(1.5);
   const darkColor = chroma(colour).darken(0.5);
 
   const threads = [];
