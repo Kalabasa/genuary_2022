@@ -40,7 +40,7 @@ function setup() {
   noLoop();
   pixelDensity(renderDetail ? 2 : 1);
   const c = createCanvas(1080, 1080);
-  commonSetup(c, 'Stitch');
+  commonSetup(c, 'Jacquard');
 
   clothGraphics = createGraphics(clothSize, clothSize);
   clothGraphics.pixelDensity(pixelDensity());
