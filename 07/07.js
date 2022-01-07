@@ -1,6 +1,6 @@
 /// <reference path="../node_modules/@types/p5/global.d.ts" />
 
-const recordVideo = false;
+const recordVideo = true;
 
 // fake import for jsdoc lol
 const p5 = require("p5");
@@ -138,7 +138,7 @@ function draw() {
 
   if (!timeline.length) {
     noLoop();
-    if (recordVideo) recordVideo.save();
+    if (recordVideo) capturer.save();
     return;
   }
 }
