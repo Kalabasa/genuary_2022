@@ -1,6 +1,7 @@
 /// <reference path="../node_modules/@types/p5/global.d.ts" />
 
 const renderDetail = true;
+const backendMode = false;
 
 const cellSize = 12;
 const artSize = 80;
@@ -99,7 +100,11 @@ function draw() {
 
   drawClothTexture(clothGraphics, 0, 0, clothSize, clothSize);
   drawArt(artGraphics);
-  drawStitches(stitchGraphics, 0, 0, clothSize, clothSize);
+  if (backendMode) {
+    drawBackStitches(stitchGraphics, 0, 0, clothSize, clothSize);
+  } else {
+    drawStitches(stitchGraphics, 0, 0, clothSize, clothSize);
+  }
 
   push();
 
@@ -107,6 +112,7 @@ function draw() {
   const y = (height - clothSize) / 2;
 
   translate(width / 2, height / 2);
+  if (backendMode) scale(-1, 1);
   rotate(randomGaussian(0, PI * 0.1));
   translate(-width / 2, -height / 2);
 
@@ -928,4 +934,133 @@ function applyNoise(target, str) {
 function antiAntiAlias(f) {
   const iterations = renderDetail ? 64 : 16;
   for (let i = 0; i < iterations; i++) f();
+}
+
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// -------------------------------------BONUS: BACKEND MODE----------------------------------------
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+
+function drawBackStitches(target, x, y, w, h) {
+  const artAlphaThreshold = 128;
+
+  const colorMap = [];
+  const visited = {};
+
+  for (let y = 0; y < h; y += cellSize) {
+    for (let x = 0; x < w; x += cellSize) {
+      const ax = floor(x / cellSize);
+      const ay = floor(y / cellSize);
+      const rgba = artGraphics.get(ax, ay);
+
+      if (
+        rgba[3] < artAlphaThreshold ||
+        (rgba[0] === 255 && rgba[1] === 255 && rgba[2] === 255)
+      ) {
+        colorMap[ax + ay * artSize] = undefined;
+      } else {
+        const paletteIndex = palette.indexOf(findPaletteColor(rgba));
+        colorMap[ax + ay * artSize] = paletteIndex;
+      }
+    }
+  }
+
+  for (let i = 0; i < palette.length; i++) {
+    const currentColor = palette[i];
+    const lastPos = { x: undefined, y: undefined };
+
+    for (let y = 0; y < h; y += cellSize) {
+      for (let x = 0; x < w; x += cellSize) {
+        if (!isMatchArtColor(x, y, currentColor, colorMap)) continue;
+
+        if (
+          lastPos.x === undefined ||
+          lastPos.y === undefined ||
+          Math.hypot(lastPos.x - x, lastPos.y - y) > 12 * cellSize
+        ) {
+          lastPos.x = x;
+          lastPos.y = y;
+          // starter knot
+          drawStitch(target, x, y, x + cellSize, y + cellSize, currentColor);
+          drawStitch(target, x, y, x + cellSize, y + cellSize, currentColor);
+        }
+
+        drawBackStitchFill(
+          target,
+          x,
+          y,
+          lastPos,
+          currentColor,
+          visited,
+          colorMap
+        );
+      }
+    }
+  }
+}
+
+function drawBackStitchFill(
+  target,
+  x,
+  y,
+  lastPos,
+  currentColor,
+  visited,
+  colorMap
+) {
+  if (!isMatchArtColor(x, y, currentColor, colorMap)) return;
+
+  const key = `${x}:${y}`;
+  if (visited[key]) return;
+  visited[key] = true;
+
+  drawStitch(target, lastPos.x, lastPos.y, x + cellSize, y, currentColor);
+  drawStitch(target, x, y + cellSize, x + cellSize, y + cellSize, currentColor);
+  lastPos.x = x;
+  lastPos.y = y;
+
+  drawBackStitchFill(
+    target,
+    x + cellSize,
+    y,
+    lastPos,
+    currentColor,
+    visited,
+    colorMap
+  );
+  drawBackStitchFill(
+    target,
+    x - cellSize,
+    y,
+    lastPos,
+    currentColor,
+    visited,
+    colorMap
+  );
+  drawBackStitchFill(
+    target,
+    x,
+    y + cellSize,
+    lastPos,
+    currentColor,
+    visited,
+    colorMap
+  );
+  drawBackStitchFill(
+    target,
+    x,
+    y - cellSize,
+    lastPos,
+    currentColor,
+    visited,
+    colorMap
+  );
+}
+
+function isMatchArtColor(x, y, checkColor, colorMap) {
+  const ax = floor(x / cellSize);
+  const ay = floor(y / cellSize);
+  const paletteIndex = colorMap[ax + ay * artSize];
+  return paletteIndex !== undefined && checkColor === palette[paletteIndex];
 }
