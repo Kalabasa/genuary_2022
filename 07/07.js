@@ -1,6 +1,6 @@
 /// <reference path="../node_modules/@types/p5/global.d.ts" />
 
-const recordVideo = new URLSearchParams(window.location.search).has('r');
+const recordVideo = new URLSearchParams(window.location.search).has("r");
 
 // fake import for jsdoc lol
 const p5 = require("p5");
@@ -142,7 +142,16 @@ function draw() {
     if (recordVideo) {
       for (let i = 0; i < 24; i++) capturer.capture(canvas);
       capturer.stop();
-      capturer.save();
+      capturer.save((blob) => {
+        const a = document.createElement("a");
+        document.body.appendChild(a);
+        const url = window.URL.createObjectURL(blob);
+        a.href = url;
+        a.download = document.title + ".webm";
+        a.click();
+        window.URL.revokeObjectURL(url);
+        setTimeout(() => a.remove());
+      });
     }
   }
 }
@@ -164,6 +173,7 @@ function generateInstructions() {
 
     if (random() < 0.3) {
       instructions.push(createSolidFillInstruction());
+      canDrawBands = true;
       hasContent = true;
     }
 
