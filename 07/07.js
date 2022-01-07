@@ -1,6 +1,6 @@
 /// <reference path="../node_modules/@types/p5/global.d.ts" />
 
-const recordVideo = true;
+const recordVideo = new URLSearchParams(window.location.search).has('r');
 
 // fake import for jsdoc lol
 const p5 = require("p5");
@@ -138,8 +138,12 @@ function draw() {
 
   if (!timeline.length) {
     noLoop();
-    if (recordVideo) capturer.save();
-    return;
+
+    if (recordVideo) {
+      for (let i = 0; i < 24; i++) capturer.capture(canvas);
+      capturer.stop();
+      capturer.save();
+    }
   }
 }
 
