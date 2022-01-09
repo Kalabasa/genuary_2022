@@ -24,7 +24,7 @@ function setup() {
   noLoop();
   pixelDensity(2);
   const c = createCanvas(1080, 1080);
-  commonSetup(c, "Linya");
+  commonSetup(c, "Line");
 
   strokeFriction = constrain(randomGaussian(0.94, 0.01), 0, 0.998);
   strokeAcceleration = max(randomGaussian(0.12, 0.02), 0.002);
