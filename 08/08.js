@@ -3,28 +3,35 @@
 /**
  * @typedef {{ x: number, y: number }} Point
  * @typedef {{ score: number, a: Point, b: Point, c: Point }} Segment
+ * @typedef {{index: number, entryKey: 'a'|'b'}} EndPoint
  */
 
 /** @type {Segment[]} */
 let segments = [];
+/** @type {Segment[]} */
 let sourceSegments = [];
+/** @type {Array<{ a: EndPoint[], b: EndPoint[] }>} */
 let sourceNeighbors;
 
 let strokeFriction;
 let strokeAcceleration;
 let strokeTremor;
+let strokeStyle;
+
+let globalRotation;
 
 function setup() {
   noLoop();
   pixelDensity(2);
-  const c = createCanvas(1080, 1350);
+  const c = createCanvas(1080, 1080);
   commonSetup(c, "Linya");
 
-  drawBackground();
-
-  strokeFriction = constrain(randomGaussian(0.93, 0.01), 0, 0.97);
-  strokeAcceleration = max(randomGaussian(0.1, 0.02), 0.002);
+  strokeFriction = constrain(randomGaussian(0.94, 0.01), 0, 0.998);
+  strokeAcceleration = max(randomGaussian(0.12, 0.02), 0.002);
   strokeTremor = randomGaussian(0, 0.01);
+  strokeStyle = random();
+
+  globalRotation = randomGaussian(0, 0.06);
 
   const cx = width / 2;
   const cy = height / 3;
@@ -34,20 +41,37 @@ function setup() {
 
   const eyeWidth = headWidth * 0.24 + randomGaussian(0, 10);
   const eyeHeight = eyeWidth * (4 / 5) + randomGaussian(0, 10);
-  const eyeSpan = headWidth * 0.22 + randomGaussian(0, 10);
+  const eyeSpan = headWidth * 0.23 + randomGaussian(0, 10);
   const leftEyeX = -eyeSpan;
   const rightEyeX = eyeSpan;
   const eyeY = 0;
 
+  const eyeProps = {
+    closed: random() < 0.4,
+    browTilt: randomGaussian(0.25, 0.5),
+  };
+  const leftEyeProps = {
+    ...eyeProps,
+  };
+  const rightEyeProps = {
+    ...eyeProps,
+    browTilt: -eyeProps.browTilt,
+  };
+
   const noseX = 0;
-  const noseY = headHeight * 0.15 + randomGaussian(0, 10);
-  const noseWidth = headWidth * 0.18 + randomGaussian(0, 20);
-  const noseHeight = headHeight * 0.23 + randomGaussian(0, 10);
+  const noseY = headHeight * 0.14 + randomGaussian(0, 10);
+  const noseWidth = headWidth * 0.16 + randomGaussian(0, 10);
+  const noseHeight = headHeight * 0.18 + randomGaussian(0, 10);
 
   const lipsX = 0;
-  const lipsY = headHeight * 0.35 + randomGaussian(0, 2);
+  const lipsY = headHeight * 0.34 + randomGaussian(0, 2);
   const lipsWidth = headWidth * 0.3 + randomGaussian(0, 20);
   const lipsHeight = headHeight * 0.08 + randomGaussian(0, 5);
+
+  const lipsProps = {
+    smile: randomGaussian(0, 0.5),
+    bite: constrain(randomGaussian(0, 1), 0, 1),
+  };
 
   const jawX = 0;
   const jawY = headHeight * 0.3 + randomGaussian(0, 5);
@@ -55,24 +79,41 @@ function setup() {
   const jawHeight = headHeight * 0.4 + randomGaussian(0, 5);
 
   const cheekX = 0;
-  const cheekY = headHeight * 0.22 + randomGaussian(0, 5);
-  const cheekWidth = headWidth * 0.8 + randomGaussian(0, 5);
-  const cheekHeight = headHeight * 0.2 + randomGaussian(0, 5);
+  const cheekY = headHeight * 0.2 + randomGaussian(0, 5);
+  const cheekWidth = headWidth * 0.7 + randomGaussian(0, 5);
+  const cheekHeight = headHeight * 0.1 + randomGaussian(0, 5);
+
+  const foreheadX = 0;
+  const foreheadY = headHeight * -0.1;
+  const foreheadWidth = headWidth * 0.86;
+  const foreheadHeight = headHeight * 0.2;
 
   const chinX = 0;
-  const chinTop = lipsY + lipsHeight / 2 + 30;
   const chinBottom = headHeight / 2 - 30;
+  const chinTop = lerp(lipsY + lipsHeight / 2, chinBottom, 0.8);
+
+  const foreheadMidX = 0;
+  const foreheadMidTop = foreheadY - foreheadHeight / 2 + 30;
+  const foreheadMidBottom = noseY - noseHeight / 2 - 100;
 
   segments.push(
-    ...transformSegs(eyeSegs(), cx + leftEyeX, cy + eyeY, eyeWidth, eyeHeight, 0, 0),
-    ...transformSegs(eyeSegs(), cx + rightEyeX, cy + eyeY, eyeWidth, eyeHeight, 0, 0),
-    ...transformSegs(noseSegs(), cx + noseX, cy + noseY, noseWidth, noseHeight, 0, 0),
-    ...transformSegs(lipsSegs(), cx + lipsX, cy + lipsY, lipsWidth, lipsHeight, 0, 0),
-    ...transformSegs(jawSegs(), cx + jawX, cy + jawY, jawWidth, jawHeight, 0, 0),
-    ...transformSegs(cheekSegs(), cx + cheekX, cy + cheekY, cheekWidth, cheekHeight, 0, 0),
+    ...transformSegs(eyeSegs(leftEyeProps), cx + leftEyeX, cy + eyeY, eyeWidth, eyeHeight),
+    ...transformSegs(eyeSegs(rightEyeProps), cx + rightEyeX, cy + eyeY, eyeWidth, eyeHeight),
+    ...transformSegs(noseSegs(), cx + noseX, cy + noseY, noseWidth, noseHeight),
+    ...transformSegs(lipsSegs(lipsProps), cx + lipsX, cy + lipsY, lipsWidth, lipsHeight),
+    ...transformSegs(jawSegs(), cx + jawX, cy + jawY, jawWidth, jawHeight),
+    ...transformSegs(cheekSegs(), cx + cheekX, cy + cheekY, cheekWidth, cheekHeight),
+    ...transformSegs(foreheadSegs(), cx + foreheadX, cy + foreheadY, foreheadWidth, foreheadHeight),
+    // forehead mid
+    {
+      score: 1,
+      a: { x: cx + foreheadMidX, y: cy + foreheadMidTop, z: 0.1 },
+      c: { x: cx + foreheadMidX, y: cy + lerp(foreheadMidTop, foreheadMidBottom, 0.3), z: 0.4 },
+      b: { x: cx + foreheadMidX, y: cy + foreheadMidBottom, z: 0.4 },
+    },
     // chin
     {
-      score: 0.5,
+      score: 1,
       a: { x: cx + chinX, y: cy + chinTop, z: 0.3 },
       c: { x: cx + chinX, y: cy + lerp(chinTop, chinBottom, 0.8), z: 0.25 },
       b: { x: cx + chinX, y: cy + chinBottom, z: 0.1 },
@@ -82,13 +123,15 @@ function setup() {
   const shadeSide = random() < 0.5 ? -1 : 1;
   for (const s of segments) {
     if (Math.sign(s.a.x - cx) === shadeSide && Math.sign(s.b.x - cx) === shadeSide) {
-      s.score *= 0.1;
+      s.score = Math.log1p(s.score) * 1e-4;
     }
   }
 
   // pseudo-3d
-  const angleX = randomGaussian(0, 100);
-  const angleY = randomGaussian(-50, 50);
+  const angle = random(0, TWO_PI);
+  const tilt = randomGaussian(200, 50);
+  const angleX = cos(angle) * tilt;
+  const angleY = sin(angle) * tilt;
   for (const s of segments) {
     s.a.x += s.a.z * angleX;
     s.a.y += s.a.z * angleY;
@@ -110,40 +153,56 @@ function setup() {
         min(abs(s1.a.x - startSideX), abs(s1.b.x - startSideX)) / (20 + s1.score)
     )
     .map(([i]) => i);
-  const startIndex = sortedIndices[floor(constrain(randomGaussian(1, 2), 0, segments.length - 1))];
-  const startSeg = segments[startIndex];
-  const startEntryKey = abs(startSeg.a.x - startSideX) < abs(startSeg.b.x - startSideX) ? "a" : "b";
 
-  noStroke();
-  fill("blue");
-  circle(segments[startIndex][startEntryKey].x, segments[startIndex][startEntryKey].y, 32);
+  const maxAttempts = 4;
+  let attempts = maxAttempts;
+  while (attempts > 0) {
+    const choice =
+      attempts < maxAttempts
+        ? maxAttempts - 1 - attempts
+        : floor(constrain(randomGaussian(1, 2), 0, segments.length - 1));
 
-  const path = findPath(startIndex, startEntryKey, 1000);
-  console.log(path);
+    const startIndex = sortedIndices[choice];
+    const startSeg = segments[startIndex];
+    const startEntryKey =
+      abs(startSeg.a.x - startSideX) < abs(startSeg.b.x - startSideX) ? "a" : "b";
 
-  const pathSegments = [];
-  for (const node of path) {
-    let seg = segments[node.index];
-    if (node.entryKey === "b") {
-      seg = {
-        a: seg.b,
-        b: seg.a,
-        c: seg.c,
-      };
+    const path = findPath(startIndex, startEntryKey, 2500);
+
+    if (!path.length) {
+      attempts--;
+      continue;
     }
-    pathSegments.push(seg);
-    textStyle(BOLD);
-    textSize(20);
-    text(node.index, seg.a.x + 10, seg.a.y + 20);
+
+    const pathSegments = [];
+    for (const node of path) {
+      let seg = segments[node.index];
+      if (node.entryKey === "b") {
+        seg = {
+          a: seg.b,
+          b: seg.a,
+          c: seg.c,
+        };
+      }
+      pathSegments.push(seg);
+    }
+    segments = pathSegments;
+
+    break;
   }
-  segments = pathSegments;
 }
 
 function draw() {
-  drawSourceSegments();
+  drawBackground();
+  // drawSourceSegments();
 
   if (!segments.length) return;
 
+  translate(width / 2, height / 2);
+  rotate(globalRotation);
+  translate(-width / 2, -height / 2);
+
+  let l = 0;
   let x = segments[0].a.x;
   let y = segments[0].a.y;
   let vx = 0;
@@ -154,13 +213,10 @@ function draw() {
   const fric = strokeFriction;
 
   noFill();
-  stroke(0);
-  strokeWeight(6);
   strokeJoin(ROUND);
 
   const dt = 0.001;
 
-  beginShape();
   for (const s of segments) {
     for (let t = 0; t < 1; t += dt) {
       const p = segPoint(s, t);
@@ -170,19 +226,31 @@ function draw() {
       const d = Math.hypot(dx, dy);
 
       if (d < step) continue;
-      else if (d > step * 2) t -= dt;
+      else if (d > step * 2) t -= dt * 0.1;
 
-      vx += (acc * dx) / d + randomGaussian(0, strokeTremor);
-      vy += (acc * dy) / d + randomGaussian(0, strokeTremor);
+      vx += acc * (dx / d);
+      vy += acc * (dy / d);
+      const tremorAcc = min(strokeTremor * 0.6, acc * 0.8);
+      const tremorDir = Math.sign(strokeTremor);
+      vx += sin(l * tremorDir * 0.02) * tremorAcc;
+      vy += cos(l * tremorDir * 0.02) * tremorAcc;
 
       vx *= fric;
       vy *= fric;
+
+      stroke(0);
+      const speed = Math.hypot(vx, vy);
+      const weight = (60 * (speed / 2) ** strokeStyle) / (3 + speed ** (1 - strokeStyle));
+      strokeWeight(weight + randomGaussian(0, 0.3));
+      line(x, y, x + vx, y + vy);
+
       x += vx;
       y += vy;
-      vertex(x, y);
+      l += speed;
+
+      if (l > 2000) return;
     }
   }
-  endShape();
 }
 
 function drawSourceSegments() {
@@ -195,14 +263,14 @@ function drawSourceSegments() {
       for (const n of sourceNeighbors[i][key]) {
         const p = sourceSegments[n.index][n.entryKey];
 
-        stroke(0, 192, 0, 8);
-        strokeWeight(12);
+        stroke(0, 192, 128, 8);
+        strokeWeight(4);
         line(seg[key].x, seg[key].y, p.x, p.y);
       }
     }
 
-    stroke(255, 0, 0, 64 + seg.score * 32);
-    strokeWeight(25);
+    stroke(0, 96, 255, 32 + seg.score * 16);
+    strokeWeight(8);
     beginShape();
     vertex(seg.a.x, seg.a.y);
     quadraticVertex(seg.c.x, seg.c.y, seg.b.x, seg.b.y);
@@ -211,7 +279,7 @@ function drawSourceSegments() {
 }
 
 function drawBackground() {
-  background("#ebe2cc");
+  background(255);
 }
 
 function segPoint(seg, t) {
@@ -226,115 +294,73 @@ function segPoint(seg, t) {
 }
 
 function findPath(startIndex, entryKey, maxLength) {
-  const depthStep = 6;
-
-  const context = {
-    exclude: new Map(),
-    neighbors: [...sourceNeighbors],
-    maxDepth: depthStep,
-    iterPath: new Map(),
-    iterLength: 0,
-    iterScore: 0,
-    bestPath: [],
-    bestScore: 0,
-  };
-
-  const startSeg = segments[startIndex];
-  const exitKey = entryKey == "a" ? "b" : "a";
-
-  let currentNode = {
-    index: startIndex,
-    seg: startSeg,
-    entryKey,
-    length: computeLength(startSeg[entryKey], startSeg[entryKey], startSeg.c, startSeg[exitKey]),
-    score: 0,
-  };
-
-  context.iterPath.set(startIndex, currentNode);
-
-  let path = [];
-
-  while (context.iterPath.length < segments.length) {
-    findPath2(currentNode.index, currentNode.entryKey, context);
-
-    if (context.bestScore <= 0) break;
-
-    currentNode = context.bestPath[min(2, context.bestPath.length) - 1];
-    path.push(...context.bestPath);
-
-    if (currentNode.length >= maxLength || context.bestPath.length === segments.length) break;
-
-    context.maxDepth = context.iterPath.size + depthStep;
-    for (const node of context.bestPath) {
-      context.iterPath.set(node.index, node);
-    }
-    context.iterLength = currentNode.length;
-    context.iterScore = currentNode.score;
-    context.bestPath = [];
-    context.bestScore = 0;
-  }
-
-  return path;
+  const best = { score: 0, fullScore: 0, path: [] };
+  iterateFindPath(startIndex, entryKey, maxLength, 0, 0, [], best);
+  return best.path;
 }
 
-function findPath2(startIndex, entryKey, context) {
-  const { exclude, neighbors, maxDepth, iterPath } = context;
-
-  const startSeg = segments[startIndex];
-  const exitKey = entryKey == "a" ? "b" : "a";
-  const currentPoint = startSeg[exitKey];
-
-  if (iterPath.size >= maxDepth || iterPath.size >= segments.length - 1) {
-    if (context.iterScore > context.bestScore) {
-      context.bestScore = context.iterScore;
-      context.bestPath = [...iterPath.values()];
+function iterateFindPath(
+  index,
+  entryKey,
+  maxLength,
+  currentLength,
+  currentScore,
+  currentPath,
+  currentBest
+) {
+  if (currentPath.length > 0) {
+    if (currentScore < currentBest.score * (currentPath.length / (currentPath.length + 5))) {
+      return;
+    } else if (currentScore > currentBest.score) {
+      currentBest.score = currentScore;
     }
+  }
+
+  const seg = segments[index];
+  const exitKey = entryKey === "a" ? "b" : "a";
+  const exit = seg[exitKey];
+
+  currentPath.push({ index, entryKey });
+
+  if (currentLength >= maxLength) {
+    if (currentScore > currentBest.fullScore) {
+      currentBest.fullScore = currentScore;
+      currentBest.path = [...currentPath.values()];
+    }
+    currentPath.pop();
     return;
   }
 
-  const origScore = context.iterScore;
-  const origLength = context.iterLength;
+  for (const n of sourceNeighbors[index][exitKey]) {
+    if (currentPath.some((node) => node.index === n.index)) continue;
 
-  for (const next of neighbors[startIndex][exitKey]) {
-    const index = next.index;
-    if (exclude.has(index) || iterPath.has(index)) continue;
+    const nSeg = segments[n.index];
+    const nEntry = nSeg[n.entryKey];
+    const nExit = nSeg[n.entryKey === "a" ? "b" : "a"];
 
-    const seg = segments[index];
-    const nextEntryKey = next.entryKey;
-    const nextExitKey = nextEntryKey == "a" ? "b" : "a";
+    const deltaScore = computeScore(seg, nSeg, seg.c, exit, nEntry, nSeg.c, currentPath);
 
-    const score = computeScore(
-      startSeg,
-      seg,
-      startSeg.c,
-      currentPoint,
-      seg[nextEntryKey],
-      seg.c,
-      context
+    if (deltaScore <= 0) continue;
+
+    const segLength = computeLength(nEntry, nSeg.c, nExit);
+    const distance = Math.hypot(nEntry.x - exit.x, nEntry.y - exit.y);
+    const deltaLength = distance + segLength;
+
+    iterateFindPath(
+      n.index,
+      n.entryKey,
+      maxLength,
+      currentLength + deltaLength,
+      currentScore + deltaScore / (segLength + distance * 2),
+      currentPath,
+      currentBest
     );
-
-    if (score <= 0) continue;
-
-    context.iterScore += score;
-    context.iterLength += computeLength(currentPoint, seg[nextEntryKey], seg.c, seg[nextExitKey]);
-
-    iterPath.set(index, {
-      index,
-      seg,
-      entryKey: nextEntryKey,
-      score: context.iterScore,
-      length: context.iterLength,
-    });
-
-    findPath2(index, nextEntryKey, context);
-
-    iterPath.delete(index);
-    context.iterScore = origScore;
-    context.iterLength = origLength;
   }
+
+  currentPath.pop();
 }
 
-const dist2Cutoff = 130 ** 2;
+const dist2Cutoff = 120 ** 2;
 function computeNeighbors() {
   const n = segments.length;
 
@@ -375,31 +401,27 @@ function computeNeighbors() {
   return neighbors;
 }
 
-function computeLength(current, nextEntry, nextControl, nextExit) {
-  const cacheKey =
-    getCacheID(current) +
-    ":" +
-    getCacheID(nextEntry) +
-    ":" +
-    getCacheID(nextControl) +
-    ":" +
-    getCacheID(nextExit);
+function computeLength(entry, control, exit) {
+  const cacheKey = getCacheID(entry) + ":" + getCacheID(control) + ":" + getCacheID(exit);
   if (computeLength.cache[cacheKey]) {
     return computeLength.cache[cacheKey];
   }
 
-  const dx = nextEntry.x - current.x;
-  const dy = nextEntry.y - current.y;
-  const dxNext = nextExit.x - nextEntry.x;
-  const dyNext = nextExit.y - nextEntry.y;
+  const nextMidX = (entry.x + control.x + exit.x) / 3;
+  const nextMidY = (entry.y + control.y + exit.y) / 3;
 
-  const value = Math.hypot(dx, dy) + Math.hypot(dxNext, dyNext);
+  const dxNextEntry = nextMidX - entry.x;
+  const dyNextEntry = nextMidY - entry.y;
+  const dxNextExit = exit.x - nextMidX;
+  const dyNextExit = exit.y - nextMidY;
+
+  const value = Math.hypot(dxNextEntry, dyNextEntry) + Math.hypot(dxNextExit, dyNextExit);
   computeLength.cache[cacheKey] = value;
   return value;
 }
 computeLength.cache = {};
 
-function computeScore(currentSeg, testSeg, prev, current, test, testNext, context) {
+function computeScore(currentSeg, testSeg, prev, current, test, testNext, currentPath) {
   const cacheKey =
     getCacheID(prev) +
     ":" +
@@ -409,42 +431,58 @@ function computeScore(currentSeg, testSeg, prev, current, test, testNext, contex
     ":" +
     getCacheID(testNext);
   if (!computeScore.cache[cacheKey]) {
-    const dx = test.x - current.x;
-    const dy = test.y - current.y;
     const dxPrev = current.x - prev.x;
     const dyPrev = current.y - prev.y;
+    const dx = test.x - current.x;
+    const dy = test.y - current.y;
     const dxNext = testNext.x - test.x;
     const dyNext = testNext.y - test.y;
 
-    const dist2 = dx ** 2 + dy ** 2;
     const dist2Prev = dxPrev ** 2 + dyPrev ** 2;
+    const dist2 = dx ** 2 + dy ** 2;
     const dist2Next = dxNext ** 2 + dyNext ** 2;
-
-    const dotNext = dxNext * dx + dyNext * dy;
-    const cosNext = dotNext / sqrt(dist2Next * dist2);
 
     const dotPrev = dx * dxPrev + dy * dyPrev;
     const cosPrev = dotPrev / sqrt(dist2 * dist2Prev);
 
-    let a = (cosNext + 1) * (cosPrev + 1) * 0.25;
+    const dotNext = dxNext * dx + dyNext * dy;
+    const cosNext = dotNext / sqrt(dist2Next * dist2);
 
-    const value = currentSeg.score / dist2;
+    let a = (cosNext + cosPrev + 2) * 0.25;
+
+    const weightRatio = 0.4;
+    const value =
+      weightRatio * currentSeg.score +
+      (1 - weightRatio) * currentSeg.score * (a / (1 + sqrt(dist2)));
     computeScore.cache[cacheKey] = value;
   }
-  
+
   let value = computeScore.cache[cacheKey];
-  
+
   // collision penalty
-  const { iterPath } = context;
   const n = segments.length;
   for (let i = 0; i < n; i++) {
     const seg = segments[i];
     if (seg === currentSeg || seg === testSeg) continue;
     if (intersectsSeg(seg, current.x, current.y, test.x, test.y)) {
-      const isPath = iterPath.has(i);
-      value -= 1;
-      if (isPath) value -= seg.score;
+      value -= seg.score;
     }
+  }
+
+  let lastExit = undefined;
+  for (const node of currentPath) {
+    const seg = segments[node.index];
+    const entry = seg[node.entryKey];
+    const exit = seg[node.entryKey === "b" ? "a" : "b"];
+
+    if (
+      lastExit &&
+      intersectsLine(lastExit.x, lastExit.y, entry.x, entry.y, current.x, current.y, test.x, test.y)
+    ) {
+      value -= 0.5;
+    }
+
+    lastExit = exit;
   }
 
   return value;
@@ -506,37 +544,52 @@ function mirrorX(segs) {
   ];
 }
 
-function eyeSegs() {
+function eyeSegs({ closed, browTilt }) {
   return [
     // brow
     {
       score: 0.5,
-      a: { x: -1, y: 0.1, z: 0.2 },
+      a: { x: -1, y: lerp(-0.2, -0.6, browTilt), z: 0.2 },
       c: { x: 0, y: -1, z: 0.2 },
-      b: { x: 1, y: 0.1, z: 0.2 },
+      b: { x: 1, y: lerp(-0.2, -0.6, -browTilt), z: 0.2 },
     },
+    // eyelid
+    ...(closed
+      ? [
+          {
+            score: 8,
+            a: { x: -1, y: 0.6, z: 0.15 },
+            c: { x: 0, y: 0.9, z: 0.22 },
+            b: { x: 1, y: 0.6, z: 0.15 },
+          },
+        ]
+      : []),
     ...mirrorX([
       // top edge
       {
-        score: 3,
+        score: 12,
         a: { x: -1, y: 0.55, z: 0.15 },
-        c: { x: -0.6, y: 0.2, z: 0.2 },
+        c: { x: -0.6, y: 0.2, z: 0.25 },
         b: { x: -0.05, y: 0.2, z: 0.25 },
       },
       // bottom edge
       {
-        score: 0.5,
+        score: 8,
         a: { x: -1, y: 0.65, z: 0.15 },
-        c: { x: -0.6, y: 1, z: 0.2 },
+        c: { x: -0.6, y: 1, z: 0.25 },
         b: { x: -0.05, y: 1, z: 0.25 },
       },
       // iris
-      {
-        score: 1,
-        a: { x: -0.1, y: 0.3, z: 0.2 },
-        c: { x: -0.4, y: 0.55, z: 0.22 },
-        b: { x: -0.1, y: 0.9, z: 0.2 },
-      },
+      ...(closed
+        ? []
+        : [
+            {
+              score: 16,
+              a: { x: -0.2, y: 0.2, z: 0.25 },
+              c: { x: -0.5, y: 0.5, z: 0.25 },
+              b: { x: -0.2, y: 0.85, z: 0.25 },
+            },
+          ]),
     ]),
   ];
 }
@@ -545,7 +598,7 @@ function noseSegs() {
   return [
     // ridge
     {
-      score: 1,
+      score: 8,
       a: { x: 0, y: -1, z: 0.4 },
       c: { x: 0, y: 0, z: 0.4 },
       b: { x: 0, y: 0.9, z: 0.6 },
@@ -553,15 +606,15 @@ function noseSegs() {
     ...mirrorX([
       // side
       {
-        score: 3,
+        score: 8,
         a: { x: -0.7, y: -0.4, z: 0.3 },
         c: { x: -0.7, y: -0.3, z: 0.3 },
-        b: { x: -1, y: 0.8, z: 0.4 },
+        b: { x: -1, y: 0.8, z: 0.36 },
       },
       // base
       {
-        score: 1,
-        a: { x: -0.9, y: 1, z: 0.4 },
+        score: 12,
+        a: { x: -0.9, y: 1, z: 0.38 },
         c: { x: -0.5, y: 1, z: 0.5 },
         b: { x: -0.1, y: 1, z: 0.6 },
       },
@@ -569,35 +622,35 @@ function noseSegs() {
   ];
 }
 
-function lipsSegs() {
+function lipsSegs({ smile, bite }) {
   return [
     // mouth
     {
-      score: 2,
-      a: { x: -0.9, y: 0, z: 0.2 },
-      c: { x: 0, y: 0.05, z: 0.4 },
-      b: { x: 0.9, y: 0, z: 0.2 },
+      score: 8,
+      a: { x: lerp(-1, -1.1, smile), y: lerp(0, -0.4, smile), z: 0.2 },
+      c: { x: 0, y: lerp(0, 0.8, smile), z: 0.3 },
+      b: { x: lerp(1, 1.1, smile), y: lerp(0, -0.4, smile), z: 0.2 },
     },
     ...mirrorX([
       // top lip
       {
-        score: 1,
-        a: { x: -1, y: -0.1, z: 0.2 },
-        c: { x: -0.5, y: -1, z: 0.4 },
-        b: { x: -0.3, y: -1, z: 0.4 },
+        score: 10,
+        a: { x: lerp(-0.9, -0.99, smile), y: lerp(-0.3, -0.7, smile), z: 0.2 },
+        c: { x: -0.5, y: -1, z: 0.3 },
+        b: { x: -0.3, y: -1, z: 0.3 },
       },
       {
-        score: 1,
-        a: { x: -0.2, y: -0.95, z: 0.4 },
-        c: { x: -0.15, y: -0.8, z: 0.35 },
-        b: { x: -0.05, y: -0.7, z: 0.4 },
+        score: 10,
+        a: { x: -0.2, y: -0.95, z: 0.3 },
+        c: { x: -0.15, y: -0.8, z: 0.3 },
+        b: { x: -0.05, y: -0.7, z: 0.3 },
       },
       // bottom lip
       {
-        score: 1,
-        a: { x: -1, y: 0.1, z: 0.2 },
-        c: { x: -0.5, y: 1, z: 0.3 },
-        b: { x: -0.1, y: 1, z: 0.3 },
+        score: 10,
+        a: { x: lerp(-0.9, -0.99, smile), y: lerp(0.3, -0.1, smile), z: 0.2 },
+        c: { x: -0.5, y: lerp(1, 0.5, bite), z: 0.3 },
+        b: { x: -0.1, y: lerp(1, 0.3, bite), z: 0.3 },
       },
     ]),
   ];
@@ -607,9 +660,15 @@ function jawSegs() {
   return [
     ...mirrorX([
       {
-        score: 0.1,
-        a: { x: -1, y: -1, z: 0 },
-        c: { x: -0.8, y: 0.8, z: 0 },
+        score: 0.001,
+        a: { x: -1, y: -1, z: -0.1 },
+        c: { x: -0.95, y: -0.5, z: -0.2 },
+        b: { x: -0.85, y: -0.1, z: -0.1 },
+      },
+      {
+        score: 0.01,
+        a: { x: -0.75, y: 0.15, z: -0.1 },
+        c: { x: -0.4, y: 0.9, z: 0 },
         b: { x: -0.1, y: 1, z: 0 },
       },
     ]),
@@ -621,9 +680,22 @@ function cheekSegs() {
     ...mirrorX([
       {
         score: 0.1,
-        a: { x: -1, y: -1, z: 0.15 },
-        c: { x: -0.8, y: -0.8, z: 0.15 },
-        b: { x: -0.7, y: 1, z: 0.1 },
+        a: { x: -1, y: -1, z: 0.2 },
+        c: { x: -0.9, y: -0.4, z: 0.3 },
+        b: { x: -0.8, y: 1, z: 0.2 },
+      },
+    ]),
+  ];
+}
+
+function foreheadSegs() {
+  return [
+    ...mirrorX([
+      {
+        score: 0.001,
+        a: { x: -1, y: 1, z: 0 },
+        c: { x: -0.8, y: -1, z: 0 },
+        b: { x: -0.5, y: -1, z: 0 },
       },
     ]),
   ];
