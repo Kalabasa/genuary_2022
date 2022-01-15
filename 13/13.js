@@ -40,7 +40,7 @@ function setup() {
         .set("hsl.l", 0.5),
       chroma.hsl(h, 0.6, 0.55),
       chroma
-        .blend(chroma.hsl(h, 0.5, 0.5), chroma.rgb(255, 255, 0), "overlay")
+        .blend(chroma.hsl(h, 0.5, 0.5), chroma.rgb(255, 224, 0), "overlay")
         .set("hsl.s", 0.6)
         .set("hsl.l", 0.6),
     ])
